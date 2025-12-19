@@ -98,3 +98,12 @@ func (a *Aggregator) GetVWAP(symbol string) float64 {
 	}
 	return state.TotalPV / state.TotalVolume
 }
+
+// returns a list of all symbols currently tracked.
+func (a *Aggregator) GetSymbols() []string {
+	keys := make([]string, 0, len(a.candles))
+	for k := range a.candles {
+		keys = append(keys, k)
+	}
+	return keys
+}

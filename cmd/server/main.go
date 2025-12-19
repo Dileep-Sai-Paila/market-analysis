@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"market-analysis/internal/aggregate"
+	"market-analysis/internal/api"
 	"market-analysis/internal/ingest"
 	"net/http"
 	"time"
@@ -19,13 +20,22 @@ func main() {
 		}
 	}()
 
-	mux := http.NewServeMux()
+	// 3. Setup Server and Routes
+	apiHandler := api.NewHandler(aggregator)
 
+	mux := http.NewServeMux()
 	// just a health check endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
+
+	// registering the imp endpoints
+	mux.HandleFunc("/symbols", apiHandler.HandleSymbols)
+	mux.HandleFunc("/ohlc", apiHandler.HandleOHLC)
+	mux.HandleFunc("/vwap", apiHandler.HandleVWAP)
+
+	//mux := http.NewServeMux()
 
 	// configs
 	srv := &http.Server{
