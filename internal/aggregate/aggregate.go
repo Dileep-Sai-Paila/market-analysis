@@ -1,9 +1,9 @@
 package aggregate
 
 import (
-	"time"
-
 	"market-analysis/internal/model"
+	"sync"
+	"time"
 )
 
 type VWAPState struct {
@@ -11,13 +11,16 @@ type VWAPState struct {
 	TotalVolume float64
 }
 
+// Aggregator holds the state of the market.
+// Now thread-safe with RWMutex.
 type Aggregator struct {
-	candles map[string]map[int64]*Candle // key: Symbol -> key: Minute Timestamp (Unix) -> Value: *Candle
+	mu sync.RWMutex // Protects the maps below
 
-	vwaps map[string]*VWAPState // key: Symbol -> Value: *VWAPState
+	candles map[string]map[int64]*Candle // key: Symbol -> key: Minute Timestamp (Unix) -> Value: *Candle
+	vwaps   map[string]*VWAPState        // key: Symbol -> Value: *VWAPState
 }
 
-// to create a clean instance
+// NewAggregator creates a clean instance.
 func NewAggregator() *Aggregator {
 	return &Aggregator{
 		candles: make(map[string]map[int64]*Candle),
@@ -27,6 +30,10 @@ func NewAggregator() *Aggregator {
 
 // updating the analytics with a new trade
 func (a *Aggregator) ProcessTrade(t model.Trade) {
+	// WRITER LOCK: Exclusive access
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	// finding the bucket (start of the minute)
 	// eg: 10:05:32 converts to 10:05:00
 	ts := t.Timestamp.Unix()
@@ -79,12 +86,28 @@ func (a *Aggregator) ProcessTrade(t model.Trade) {
 	state.TotalVolume += t.Quantity
 }
 
-// to return all candles for a symbol.
+// returns a list of all symbols.
+func (a *Aggregator) GetSymbols() []string {
+	// READER LOCK: Allows other readers, blocks writers
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	keys := make([]string, 0, len(a.candles))
+	for k := range a.candles {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// returns all candles for a symbol.
 func (a *Aggregator) GetOHLC(symbol string) []*Candle {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	var results []*Candle
 	if symbolMap, ok := a.candles[symbol]; ok {
 		for _, c := range symbolMap {
-			results = append(results, c)
+			results = append(results, c) //handler converts this to json ASAP, so this is safe enough
 		}
 	}
 	return results
@@ -92,18 +115,12 @@ func (a *Aggregator) GetOHLC(symbol string) []*Candle {
 
 // to return the current VWAP for a symbol.
 func (a *Aggregator) GetVWAP(symbol string) float64 {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	state, ok := a.vwaps[symbol]
 	if !ok || state.TotalVolume == 0 {
 		return 0
 	}
 	return state.TotalPV / state.TotalVolume
-}
-
-// returns a list of all symbols currently tracked.
-func (a *Aggregator) GetSymbols() []string {
-	keys := make([]string, 0, len(a.candles))
-	for k := range a.candles {
-		keys = append(keys, k)
-	}
-	return keys
 }
