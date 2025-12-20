@@ -66,8 +66,7 @@ func main() {
 	<-ctx.Done()
 	log.Println("Shutdown signal received. Closing server...")
 
-	// 7. Execute Graceful Shutdown
-	// Give the server 5 seconds to finish active requests
+	//give the server 5 seconds to finish active requests
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

@@ -11,20 +11,22 @@ type VWAPState struct {
 	TotalVolume float64
 }
 
-// Aggregator holds the state of the market.
-// Now thread-safe with RWMutex.
+// holds the state of the market,thread-safe with RWMutex.
 type Aggregator struct {
 	mu sync.RWMutex // Protects the maps below
 
 	candles map[string]map[int64]*Candle // key: Symbol -> key: Minute Timestamp (Unix) -> Value: *Candle
 	vwaps   map[string]*VWAPState        // key: Symbol -> Value: *VWAPState
+
+	lastTrades map[string]model.Trade
 }
 
 // NewAggregator creates a clean instance.
 func NewAggregator() *Aggregator {
 	return &Aggregator{
-		candles: make(map[string]map[int64]*Candle),
-		vwaps:   make(map[string]*VWAPState),
+		candles:    make(map[string]map[int64]*Candle),
+		vwaps:      make(map[string]*VWAPState),
+		lastTrades: make(map[string]model.Trade),
 	}
 }
 
@@ -34,6 +36,15 @@ func (a *Aggregator) ProcessTrade(t model.Trade) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
+	//if the trade is identicsl with the last one we saw for the symbol, it will be skipped
+	if last, ok := a.lastTrades[t.Symbol]; ok {
+		if last.Timestamp.Equal(t.Timestamp) &&
+			last.Price == t.Price &&
+			last.Quantity == t.Quantity {
+			return //ignore duplicate
+		}
+	}
+	a.lastTrades[t.Symbol] = t //updating last seen trade
 	// finding the bucket (start of the minute)
 	// eg: 10:05:32 converts to 10:05:00
 	ts := t.Timestamp.Unix()
