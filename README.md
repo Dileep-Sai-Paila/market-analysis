@@ -34,6 +34,9 @@ A deduplication strategy that I thought of is:
 
 This approach removes ***common consecutive duplicates*** while keeping the memory usage bounded. Non-consecutive duplicates may still be processed and this is as a trade-off I can see.
 
+**Why I chose this?**
+Because, it takes $O(1)$ memory cost per symbol and hence is extremely fast. Also, no cleanup needed.
+
 ## Handling Out-of-Order Data
 
 Trades are not guaranteed to arrive in timestamp order.
