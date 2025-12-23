@@ -20,7 +20,7 @@ I used the concurrency approach using the follwoing goroutines and channels:
 * Only **one** goroutine is allowed to update shared aggregation state (single-writer pattern).
 * **HTTP handlers** may read aggregated state concurrently and are protected using an **RWMutex**.
 
-This design helped me avoid data races while allowing parallel processing of CPU-bound parsing work(csv parsing).
+This design helped me avoid data races while allowing parallel processing of CPU-bound parsing work(i.e. the csv parsing).
 
 ## Duplicate Handling
 
@@ -32,7 +32,7 @@ A deduplication strategy that I thought of is:
 
 * If a new trade is identical to the previously seen trade for that symbol (same timestamp, price, and quantity), it is ignored.
 
-This approach removes ***common consecutive duplicates*** while keeping the memory usage bounded. Non-consecutive duplicates may still be processed and this is as a trade-off I can see.
+This approach removes ***common consecutive duplicates*** while keeping the memory usage bounded. Non-consecutive duplicates may still be processed and this is as a trade-off I can see, inorder to keep the memory bounded 🙃.
 
 **Why I chose this?**
 Because, it takes $O(1)$ memory cost per symbol and hence is extremely fast. Also, no cleanup needed.
@@ -64,13 +64,13 @@ Memory usage grows with the number of symbols and time buckets observed, not wit
 ## Trade-offs and Assumptions
 
 * Deduplication is intentionally limited to consecutive duplicates to avoid unbounded memory growth.
-* OHLC candles are retained for all observed time buckets during ingestion; since the assignment processes a finite CSV file, this keeps memory usage bounded within scope.
-* In a production system, older candles would typically be evicted or persisted externally.
+* OHLC candles are retained for all observed time buckets during ingestion; since here i processed a finite CSV file(even though large), this keeps memory usage bounded within scope.
+* In a production system, older candles would typically be evicted or persisted externally, so this is one assumption I had.
 * All timestamps are processed in UTC, which avoids timezone-related inconsistencies.
 
 ## How to run
 
-After cloning this repo, inorder to run this service:
+After cloning this repo, cd to the root project folder. Inorder to run this service:
 
 **go run cmd/server/main.go**
 
@@ -82,23 +82,23 @@ On startup, the service will:
 
 Once the service is running, the following endpoints are available:
 
-* Health check   
-curl http://localhost:8080/health
+* Health check(just a dummy to check if route is working)   
+**curl http://localhost:8080/health**
 
 
 * List all symbols   
-curl http://localhost:8080/symbols
+**curl http://localhost:8080/symbols**
 
 
 * Get OHLC candles for a symbol   
-curl http://localhost:8080/ohlc?symbol=RELIANCE
+**curl http://localhost:8080/ohlc?symbol=RELIANCE**
 
 
 * Get VWAP for a symbol   
-curl http://localhost:8080/vwap?symbol=TCS
+**curl http://localhost:8080/vwap?symbol=TCS**
 
 
-All responses are returned in JSON format.
+All responses are returned in the JSON format.
 
 ## Graceful Shutdown
 
@@ -107,5 +107,6 @@ Press **Ctrl+C** to stop the service.
 The server will:
 
 * Stop accepting new HTTP requests
+* If done before ingestion, it will stop the ingestion process too gracefully
 * Finish processing any in-flight requests
 * Shut down cleanly
