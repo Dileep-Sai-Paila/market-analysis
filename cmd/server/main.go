@@ -22,7 +22,7 @@ func main() {
 
 	log.Println("Starting data ingestion...")
 	go func() {
-		err := ingest.IngestFile("ticks.csv", aggregator)
+		err := ingest.IngestFile(ctx, "ticks.csv", aggregator)
 		if err != nil {
 			log.Printf("Error processing file: %v", err)
 		}

@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"context"
 	"encoding/csv"
 	"io"
 	"log"
@@ -14,7 +15,7 @@ import (
 )
 
 // stream the csv file thru a worker pool
-func IngestFile(filepath string, agg *aggregate.Aggregator) error {
+func IngestFile(ctx context.Context, filepath string, agg *aggregate.Aggregator) error {
 	file, err := os.Open(filepath)
 	if err != nil {
 		return err
@@ -60,6 +61,13 @@ func IngestFile(filepath string, agg *aggregate.Aggregator) error {
 	//Producer: read file and feed workers
 	go func() {
 		for {
+			select {
+			case <-ctx.Done():
+				log.Println("Ingestion cancelled by user.")
+				return //if it reaches here, then stop reading immediately
+			default:
+				// Continue normal execution
+			}
 			record, err := reader.Read()
 			if err == io.EOF {
 				break
