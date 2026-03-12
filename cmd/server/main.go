@@ -18,7 +18,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM) //context should be cancelled with ctrl+c or SIGTERM
 	defer stop()
 
-	aggregator := aggregate.NewAggregator()
+	aggregator := aggregate.NewShardedAggregator(4)
 
 	log.Println("Starting data ingestion...")
 	go func() {

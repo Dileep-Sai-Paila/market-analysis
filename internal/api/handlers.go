@@ -8,10 +8,10 @@ import (
 )
 
 type Handler struct {
-	agg *aggregate.Aggregator
+	agg *aggregate.ShardedAggregator
 }
 
-func NewHandler(agg *aggregate.Aggregator) *Handler {
+func NewHandler(agg *aggregate.ShardedAggregator) *Handler {
 	return &Handler{agg: agg}
 }
 

@@ -15,7 +15,7 @@ import (
 )
 
 // stream the csv file thru a worker pool
-func IngestFile(ctx context.Context, filepath string, agg *aggregate.Aggregator) error {
+func IngestFile(ctx context.Context, filepath string, agg *aggregate.ShardedAggregator) error {
 	file, err := os.Open(filepath)
 	if err != nil {
 		return err
